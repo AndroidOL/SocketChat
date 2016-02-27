@@ -141,6 +141,7 @@
                                 if (SendTimer.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
                                     SendTimer.Interrupt();
                                 } else { SendTimer.Abort(); }
+                            } catch (System.Threading.ThreadInterruptedException) {
                             } catch (System.Exception e) { System.Console.WriteLine("[Class 2]# {0}: {1}\n\t{2}", e.GetType(), e.Message, e.StackTrace); } finally { };
                         }));
                         PrintMessage.Start();
