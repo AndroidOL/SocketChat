@@ -46,7 +46,9 @@
 
                 do { System.Threading.Thread.Sleep(100); } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
                 System.Console.WriteLine("Socket END...");
-                recMess.Interrupt();
+                if (recMess.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
+                    recMess.Interrupt();
+                } else { recMess.Abort(); }
             } catch (System.ObjectDisposedException e) {
             } catch (System.Exception e) {
                 System.Console.WriteLine(e.GetType() + ": " + e.Message);
@@ -55,11 +57,14 @@
             } finally { }
         }
 
+        internal protected void SetClientName() {
+            System.Console.WriteLine("Send Message to SET Name: {0}", this.ClientName);
+            ClientSocket.Send(System.Text.Encoding.UTF8.GetBytes("SET NAME: " + this.ClientName));
+        }
+
         internal protected bool SendMessage() {
             try {
                 string msg = string.Empty;
-                System.Console.WriteLine("Send Message to SET Name: {0}", this.ClientName);
-                ClientSocket.Send(System.Text.Encoding.UTF8.GetBytes("SET NAME: " + this.ClientName));
                 while ((msg = System.Console.ReadLine()) != "EOF") {
                     if (!isConnect()) { break; }
 
@@ -133,7 +138,9 @@
                                         }
                                     }
                                 } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
-                                SendTimer.Interrupt();
+                                if (SendTimer.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
+                                    SendTimer.Interrupt();
+                                } else { SendTimer.Abort(); }
                             } catch (System.Exception e) { System.Console.WriteLine("[Class 2]# {0}: {1}\n\t{2}", e.GetType(), e.Message, e.StackTrace); } finally { };
                         }));
                         PrintMessage.Start();
@@ -141,7 +148,9 @@
                             System.Threading.Thread.Sleep(500);
                         } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
                         System.Console.WriteLine("Socket END by {0}...", PrintMessage.Name);
-                        PrintMessage.Interrupt();
+                        if (PrintMessage.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
+                            PrintMessage.Interrupt();
+                        } else { PrintMessage.Abort(); }
                     } catch (System.Exception e) { System.Console.WriteLine("[Class 1]# {0}: {1}\n\t{2}", e.GetType(), e.Message, e.StackTrace); } finally { myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close(); }
                 }));
                 receiveThread.Start();
@@ -187,6 +196,7 @@
                     } catch (System.Exception) { myClient = null; break; } finally { }
 
                     try {
+                        myClient.SetClientName();
                         System.Threading.Thread messageRec = new System.Threading.Thread(() => {
                             do {
                                 if (myClient.isConnect()) {
