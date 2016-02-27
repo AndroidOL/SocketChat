@@ -49,12 +49,7 @@
                 if (recMess.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
                     recMess.Interrupt();
                 } else { recMess.Abort(); }
-            } catch (System.ObjectDisposedException e) {
-            } catch (System.Exception e) {
-                System.Console.WriteLine(e.GetType() + ": " + e.Message);
-                myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both);
-                ClientSocket.Close();
-            } finally { }
+            } catch (System.ObjectDisposedException) { } finally { }
         }
 
         internal protected void SetClientName() {
@@ -75,10 +70,7 @@
                     }
                     System.Threading.Thread.Sleep(100);
                 } if (isConnect()) { ClientSocket.Send(System.Text.Encoding.UTF8.GetBytes("END OF THE SOCKET")); }
-            } catch (System.Exception e) { System.Console.WriteLine(e.GetType() + ": " + e.Message); } finally {
-                ClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both);
-                ClientSocket.Close();
-            }
+            } finally { ClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); ClientSocket.Close(); }
             return false;
         }
 
@@ -115,10 +107,11 @@
                                         do {
                                             if (currentPoint < ChatLog.Count) {
                                                 myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(string.Format("\t[{0}]", ChatLog[currentPoint++])));
-                                                System.Threading.Thread.Sleep(300);
+                                                System.Threading.Thread.Sleep(500);
                                             }
                                         } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
-                                    } catch (System.Exception e) { System.Console.WriteLine("[Class 3]# {0}: {1}\n\t{2}", e.GetType(), e.Message, e.StackTrace); } finally { }
+                                    } catch (System.ObjectDisposedException) {
+                                    } catch (System.Threading.ThreadInterruptedException) { } finally { }
                                 });
                                 SendTimer.Start();
 
@@ -141,8 +134,8 @@
                                 if (SendTimer.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
                                     SendTimer.Interrupt();
                                 } else { SendTimer.Abort(); }
-                            } catch (System.Threading.ThreadInterruptedException) {
-                            } catch (System.Exception e) { System.Console.WriteLine("[Class 2]# {0}: {1}\n\t{2}", e.GetType(), e.Message, e.StackTrace); } finally { };
+                            } catch (System.Net.Sockets.SocketException) {
+                            } catch (System.Threading.ThreadInterruptedException) { } finally { };
                         }));
                         PrintMessage.Start();
                         do {
@@ -152,7 +145,8 @@
                         if (PrintMessage.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
                             PrintMessage.Interrupt();
                         } else { PrintMessage.Abort(); }
-                    } catch (System.Exception e) { System.Console.WriteLine("[Class 1]# {0}: {1}\n\t{2}", e.GetType(), e.Message, e.StackTrace); } finally { myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close(); }
+                    } finally { myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close(); }
+                    // System.Exception e: System.Console.WriteLine("[Class 1]# {0}: {1}\n\t{2}", e.GetType(), e.Message, e.StackTrace);
                 }));
                 receiveThread.Start();
             } while (true);
