@@ -203,12 +203,13 @@
                         messageRec.Start();
                         do { System.Threading.Thread.Sleep(100); } while (flag = myClient.SendMessage());
                     } catch (System.Exception) { } finally { myClient = null; }
-
                     break;
+
                 case "Server":
                     Server myServer = new Server(setIPAddress, setListenPort);
                     myServer.Listen();
                     break;
+
                 default:
                     getProgramHelp();
                     break;
