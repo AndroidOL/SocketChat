@@ -173,6 +173,7 @@
 
         private int canAnalysis(string msg) {
             if (msg.Length < 0x04) { return 0x00; }
+
             switch (msg.Substring(0, 4)) {
                 case "SETN": if (msg.IndexOf(": ") >= 0x00) { return 0x01; } else { return 0x00; };
                 case "GETN": return 0x02;
