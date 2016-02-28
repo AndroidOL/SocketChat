@@ -13,8 +13,9 @@
     }
 
     public class Client : SocketBase {
-        private static System.Net.Sockets.Socket ClientSocket = null;
         public string ClientName { set; get; }
+        private static System.Net.Sockets.Socket ClientSocket = null;
+
         public Client(string setSocketIPAddress, int setSocketPort, string setClientName) : base(setSocketIPAddress, setSocketPort) { this.ClientName = setClientName; }
         public override string toString() { return ""; }
 
@@ -69,8 +70,7 @@
                         byte[] sMessage = System.Text.Encoding.UTF8.GetBytes(msg);
                         ClientSocket.Send(sMessage, sMessage.Length, 0);
                         System.Console.WriteLine("Send Message to [{0}]: {1}", ClientSocket.RemoteEndPoint.ToString(), msg);
-                    }
-                    System.Threading.Thread.Sleep(100);
+                    } System.Threading.Thread.Sleep(100);
                 } if (isConnect()) { ClientSocket.Send(System.Text.Encoding.UTF8.GetBytes("END OF THE SOCKET")); }
             } finally { ClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); ClientSocket.Close(); }
             return false;
@@ -80,10 +80,12 @@
     }
 
     public class Server : SocketBase {
+        private bool commandAnalysis { set; get; }
+
         private static System.Collections.ArrayList ChatLog = new System.Collections.ArrayList();
         private static System.Net.Sockets.Socket ServerSocket = null;
 
-        public Server(string setSocketIPAddress, int setSocketPort) : base(setSocketIPAddress, setSocketPort) { }
+        public Server(string setSocketIPAddress, int setSocketPort, string commandAnalysis) : base(setSocketIPAddress, setSocketPort) { if (commandAnalysis == "TRUE") { this.commandAnalysis = true; } }
         public override string toString() { return ""; }
 
         public void Listen() {
@@ -124,12 +126,29 @@
                                 } else { ClientName = string.Empty; }
                                 System.Threading.Thread.CurrentThread.Name = ClientName;
                                 System.Console.WriteLine("Socket STARTED by {0}...", ClientName);
+
+                                string msg = string.Empty;
                                 do {
                                     if (System.Threading.Thread.CurrentThread.IsAlive) {
                                         if ((receiveMessageLength = myClientSocket.Receive(result)) > 0x00) {
-                                            lock (ChatLog) { ChatLog.Add(ClientName + ": " + System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength)); }
-                                            System.Console.WriteLine("Received Message by [{0} @ -#{1}]: {2}", myClientSocket.RemoteEndPoint.ToString(), ClientName, System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength));
-                                            System.Threading.Thread.Sleep(200);
+                                            msg = System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength);
+
+                                            if (this.commandAnalysis) {
+                                                switch (canAnalysis(msg)) {
+                                                    case 0x01:
+                                                        int strLength = msg.Length;
+                                                        int startIndex = msg.IndexOf(": ") + ": ".Length;
+                                                        if (startIndex >= 0x04) {
+                                                            ClientName = msg.Substring(startIndex, strLength - startIndex);
+                                                        } break;
+                                                    case 0x02:
+                                                        myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(ClientName)); break;
+                                                    default:
+                                                        lock (ChatLog) { ChatLog.Add(ClientName + ": " + msg); }
+                                                        System.Console.WriteLine("Received Message by [{0} @ -#{1}]: {2}", myClientSocket.RemoteEndPoint.ToString(), ClientName, msg);
+                                                        break;
+                                                } System.Threading.Thread.Sleep(200);
+                                            }
                                         }
                                     }
                                 } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
@@ -153,14 +172,23 @@
                 receiveThread.Start();
             } while (true);
         }
+
+        private int canAnalysis(string msg) {
+            if (msg.Length < 0x04) { return 0x00; }
+            switch (msg.Substring(0, 4)) {
+                case "SETN": return 0x01;
+                case "GETN": return 0x02;
+                default: return 0x00;
+            }
+        }
     }
 
     public class SocketProgram {
         public static void getProgramHelp() {
-            System.Console.WriteLine("%0.exe -<Launcher Mode> -<Server IP>(:50740) [Name]");
+            System.Console.WriteLine("%0.exe -<Launcher Mode> -<Server IP>(:50740) [commandAnalysis/Name]");
             System.Console.WriteLine("");
             System.Console.WriteLine("For Example: ");
-            System.Console.WriteLine("SocketChat.exe Server 127.0.0.1");
+            System.Console.WriteLine("SocketChat.exe Server 127.0.0.1 [TRUE]");
             System.Console.WriteLine("SocketChat.exe Client 127.0.0.1 [My Name]");
             System.Console.ReadKey();
             System.Environment.Exit(0xFF);
@@ -170,6 +198,7 @@
             string launcherMode = string.Empty;
             string setIPAddress = string.Empty;
             string ClientName = string.Empty;
+            string CommandMode = string.Empty;
             int setListenPort = 50740;
             bool flag = true;
 
@@ -177,8 +206,8 @@
                 if (args.Length != 2 && args.Length != 3) { throw new System.NotSupportedException("Error Args Length..."); } else if (args.Length == 3) {
                     launcherMode = args[0];
                     setIPAddress = args[1];
-                    ClientName = args[2];
-                } else { launcherMode = args[0]; setIPAddress = args[1]; ClientName = "[Client Name]"; }
+                    CommandMode = ClientName = args[2];
+                } else { launcherMode = args[0]; setIPAddress = args[1]; ClientName = "[Client Name]"; CommandMode = "FALSE"; }
             } catch (System.Exception) { getProgramHelp(); }
 
             switch (launcherMode) {
@@ -212,7 +241,7 @@
                     break;
 
                 case "Server":
-                    Server myServer = new Server(setIPAddress, setListenPort);
+                    Server myServer = new Server(setIPAddress, setListenPort, CommandMode);
                     myServer.Listen();
                     break;
 
