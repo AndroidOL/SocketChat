@@ -90,11 +90,11 @@
 
         public void Listen() {
             ServerSocket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
-            ServerSocket.Bind(new System.Net.IPEndPoint(this.SocketAddress, this.SocketPort));
-            ServerSocket.Listen(5);
-            System.Console.WriteLine("Listening [{0}] was Succeeded...", ServerSocket.LocalEndPoint.ToString());
-            System.Threading.Thread myThread = new System.Threading.Thread(ListenClientConnect);
-            myThread.Start();
+            try {
+                ServerSocket.Bind(new System.Net.IPEndPoint(this.SocketAddress, this.SocketPort)); ServerSocket.Listen(5);
+                System.Console.WriteLine("Listening [{0}] was Succeeded...", ServerSocket.LocalEndPoint.ToString());
+                System.Threading.Thread myThread = new System.Threading.Thread(ListenClientConnect); myThread.Start();
+            } catch (System.Net.Sockets.SocketException) { System.Console.WriteLine("IP or Port was used..."); System.Console.ReadKey(); } finally { }
         }
 
         private void ListenClientConnect() {
