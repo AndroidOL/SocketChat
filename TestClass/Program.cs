@@ -94,7 +94,7 @@
                 ServerSocket.Bind(new System.Net.IPEndPoint(this.SocketAddress, this.SocketPort)); ServerSocket.Listen(5);
                 System.Console.WriteLine("Listening [{0}] was Succeeded...", ServerSocket.LocalEndPoint.ToString());
                 System.Threading.Thread myThread = new System.Threading.Thread(ListenClientConnect); myThread.Start();
-            } catch (System.Net.Sockets.SocketException) { System.Console.WriteLine("IP or Port was used..."); System.Console.ReadKey(); } finally { }
+            } catch (System.Net.Sockets.SocketException) { System.Console.WriteLine("IP or Port was used..."); } finally { }
         }
 
         private void ListenClientConnect() {
@@ -188,8 +188,6 @@
             System.Console.WriteLine("For Example: ");
             System.Console.WriteLine("SocketChat.exe Server 127.0.0.1 [TRUE]");
             System.Console.WriteLine("SocketChat.exe Client 127.0.0.1 [My Name]");
-            System.Console.ReadKey();
-            System.Environment.Exit(0xFF);
         }
 
         public static void Main(string[] args) {
@@ -247,6 +245,7 @@
                     getProgramHelp();
                     break;
             }
+            System.Console.ReadKey();
         }
     }
 }
