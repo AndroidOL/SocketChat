@@ -50,9 +50,7 @@
                 if (recMess.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
                     recMess.Interrupt();
                 } else { recMess.Abort(); }
-
-                System.Environment.Exit(0x00);
-            } catch (System.ObjectDisposedException) { } finally { }
+            } catch (System.ObjectDisposedException) { } finally { System.Environment.Exit(0x00); }
         }
 
         internal protected void SetClientName() {
@@ -242,9 +240,7 @@
                     myServer.Listen();
                     break;
 
-                default:
-                    getProgramHelp();
-                    break;
+                default: break;
             }
             System.Console.ReadKey();
         }
