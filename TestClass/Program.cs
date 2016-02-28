@@ -125,26 +125,25 @@
                                 System.Threading.Thread.CurrentThread.Name = ClientName;
                                 System.Console.WriteLine("Socket STARTED by {0}...", ClientName);
 
-                                string msg = string.Empty;
+                                string msg = string.Empty; int selectIndex = 0x00;
                                 do {
                                     if (System.Threading.Thread.CurrentThread.IsAlive) {
                                         if ((receiveMessageLength = myClientSocket.Receive(result)) > 0x00) {
                                             msg = System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength);
 
-                                            if (this.commandAnalysis) {
-                                                switch (canAnalysis(msg)) {
-                                                    case 0x01:
-                                                        string orgClientName = ClientName; int strLength = msg.Length; int startIndex = msg.IndexOf(": ") + ": ".Length;
-                                                        ClientName = msg.Substring(startIndex, strLength - startIndex);
-                                                        lock (ChatLog) { ChatLog.Add("[" + orgClientName + "] was Change Name to [" + ClientName + "]"); } break;
-                                                    case 0x02:
-                                                        myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(ClientName)); break;
-                                                    default:
-                                                        lock (ChatLog) { ChatLog.Add(ClientName + ": " + msg); }
-                                                        System.Console.WriteLine("Received Message by [{0} @ -#{1}]: {2}", myClientSocket.RemoteEndPoint.ToString(), ClientName, msg);
-                                                        break;
-                                                } System.Threading.Thread.Sleep(200);
-                                            }
+                                            if (this.commandAnalysis) { selectIndex = canAnalysis(msg); } else { selectIndex = 0x00; }
+                                            switch (selectIndex) {
+                                                case 0x01:
+                                                    string orgClientName = ClientName; int startIndex = msg.IndexOf(": ") + ": ".Length;
+                                                    ClientName = msg.Substring(startIndex, msg.Length - startIndex);
+                                                    lock (ChatLog) { ChatLog.Add("[" + orgClientName + "] was Change Name to [" + ClientName + "]"); } break;
+                                                case 0x02: myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(ClientName)); break;
+                                                case 0x04: this.commandAnalysis = !this.commandAnalysis; break;
+                                                case 0x08: myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close(); System.Environment.Exit(0); break;
+                                                default:
+                                                    System.Console.WriteLine("Received Message by [{0} @ -#{1}]: {2}", myClientSocket.RemoteEndPoint.ToString(), ClientName, msg);
+                                                    lock (ChatLog) { ChatLog.Add(ClientName + ": " + msg); } break;
+                                            } System.Threading.Thread.Sleep(200);
                                         }
                                     }
                                 } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
@@ -175,6 +174,8 @@
             switch (msg.Substring(0, 4)) {
                 case "SETN": if (msg.IndexOf(": ") >= 0x00) { return 0x01; } else { return 0x00; };
                 case "GETN": return 0x02;
+                case "DISA": return 0x04;
+                case "SHUT": return 0x08;
                 default: return 0x00;
             }
         }
