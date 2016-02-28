@@ -136,8 +136,9 @@
                                             if (this.commandAnalysis) {
                                                 switch (canAnalysis(msg)) {
                                                     case 0x01:
-                                                        int strLength = msg.Length; int startIndex = msg.IndexOf(": ") + ": ".Length;
-                                                        ClientName = msg.Substring(startIndex, strLength - startIndex); break;
+                                                        string orgClientName = ClientName; int strLength = msg.Length; int startIndex = msg.IndexOf(": ") + ": ".Length;
+                                                        ClientName = msg.Substring(startIndex, strLength - startIndex);
+                                                        lock (ChatLog) { ChatLog.Add("[" + orgClientName + "] was Change Name to [" + ClientName + "]"); } break;
                                                     case 0x02:
                                                         myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(ClientName)); break;
                                                     default:
@@ -173,7 +174,7 @@
         private int canAnalysis(string msg) {
             if (msg.Length < 0x04) { return 0x00; }
             switch (msg.Substring(0, 4)) {
-                case "SETN": return 0x01;
+                case "SETN": if (msg.IndexOf(": ") >= 0x00) { return 0x01; } else { return 0x00; };
                 case "GETN": return 0x02;
                 default: return 0x00;
             }
