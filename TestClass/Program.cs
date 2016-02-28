@@ -49,6 +49,8 @@
                 if (recMess.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
                     recMess.Interrupt();
                 } else { recMess.Abort(); }
+
+                System.Environment.Exit(0x00);
             } catch (System.ObjectDisposedException) { } finally { }
         }
 
@@ -155,7 +157,11 @@
 
     public class SocketProgram {
         public static void getProgramHelp() {
-            System.Console.WriteLine("*.exe -Mode -IP:50740");
+            System.Console.WriteLine("%0.exe -<Launcher Mode> -<Server IP>(:50740) [Name]");
+            System.Console.WriteLine("");
+            System.Console.WriteLine("For Example: ");
+            System.Console.WriteLine("SocketChat.exe Server 127.0.0.1");
+            System.Console.WriteLine("SocketChat.exe Client 127.0.0.1 [My Name]");
             System.Console.ReadKey();
             System.Environment.Exit(0xFF);
         }
