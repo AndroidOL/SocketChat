@@ -136,11 +136,8 @@
                                             if (this.commandAnalysis) {
                                                 switch (canAnalysis(msg)) {
                                                     case 0x01:
-                                                        int strLength = msg.Length;
-                                                        int startIndex = msg.IndexOf(": ") + ": ".Length;
-                                                        if (startIndex >= 0x04) {
-                                                            ClientName = msg.Substring(startIndex, strLength - startIndex);
-                                                        } break;
+                                                        int strLength = msg.Length; int startIndex = msg.IndexOf(": ") + ": ".Length;
+                                                        ClientName = msg.Substring(startIndex, strLength - startIndex); break;
                                                     case 0x02:
                                                         myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(ClientName)); break;
                                                     default:
