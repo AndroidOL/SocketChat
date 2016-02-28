@@ -140,6 +140,7 @@
                                                 case 0x02: myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(ClientName)); break;
                                                 case 0x04: this.commandAnalysis = !this.commandAnalysis; break;
                                                 case 0x08: myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close(); System.Environment.Exit(0); break;
+                                                case 0x0F: SocketProgram.getProgramHelp(); break;
                                                 default:
                                                     System.Console.WriteLine("Received Message by [{0} @ -#{1}]: {2}", myClientSocket.RemoteEndPoint.ToString(), ClientName, msg);
                                                     lock (ChatLog) { ChatLog.Add(ClientName + ": " + msg); } break;
@@ -176,6 +177,7 @@
                 case "GETN": return 0x02;
                 case "DISA": return 0x04;
                 case "SHUT": return 0x08;
+                case "HELP": return 0x0F;
                 default: return 0x00;
             }
         }
@@ -200,26 +202,21 @@
 
             try {
                 if (args.Length != 2 && args.Length != 3) { throw new System.NotSupportedException("Error Args Length..."); } else if (args.Length == 3) {
-                    launcherMode = args[0];
-                    setIPAddress = args[1];
-                    CommandMode = ClientName = args[2];
+                    launcherMode = args[0]; setIPAddress = args[1]; CommandMode = ClientName = args[2];
                 } else { launcherMode = args[0]; setIPAddress = args[1]; ClientName = "[Client Name]"; CommandMode = "FALSE"; }
-            } catch (System.Exception) { getProgramHelp(); }
+            } catch (System.Exception) { getProgramHelp(); } finally { }
 
             switch (launcherMode) {
                 case "Client":
                     Client myClient = new Client(setIPAddress, setListenPort, ClientName);
                     try {
-                        bool isConnected = false;
-                        int ConnectTimes = 0x00;
+                        bool isConnected = false; int ConnectTimes = 0x00;
                         do {
-                            try { isConnected = myClient.Connect(); } catch (System.Exception) { } finally { }
-                            if (isConnected) { break; } else if (++ConnectTimes > 0x03) { throw new System.NotSupportedException(); } else {
-                                System.Console.WriteLine("Handshaking [{0}] was No Response...", myClient.SocketAddress.ToString());
-                                System.Threading.Thread.Sleep(1000);
-                            }
+                            if (isConnected = myClient.Connect()) { break; } else if (ConnectTimes >= 0x03) { throw new System.NotSupportedException(); } else {
+                                System.Console.WriteLine("Handshaking [{0}] - No Response...", myClient.SocketAddress.ToString());
+                            } if (++ConnectTimes <= 0x02) { System.Threading.Thread.Sleep(1000); }
                         } while (!isConnected);
-                    } catch (System.Exception) { myClient = null; break; } finally { }
+                    } catch (System.Exception) { System.Console.WriteLine("Bad Server Address"); break; } finally { }
 
                     try {
                         myClient.SetClientName();
@@ -233,7 +230,7 @@
                         });
                         messageRec.Start();
                         do { System.Threading.Thread.Sleep(100); } while (flag = myClient.SendMessage());
-                    } catch (System.Exception) { } finally { myClient = null; }
+                    } catch (System.Exception) { } finally { }
                     break;
 
                 case "Server":
