@@ -4,8 +4,8 @@
         public System.Net.IPAddress SocketAddress { set; get; }
         public int SocketPort { set; get; }
 
-        public SocketBase(string setSocketIPAddress, int setSocketPort) {
-            this.SocketAddress = System.Net.IPAddress.Parse(setSocketIPAddress);
+        public SocketBase(System.Net.IPAddress setSocketIPAddress, int setSocketPort) {
+            this.SocketAddress = setSocketIPAddress;
             this.SocketPort = setSocketPort;
         }
 
@@ -16,7 +16,7 @@
         public string ClientName { set; get; }
         private static System.Net.Sockets.Socket ClientSocket = null;
 
-        public Client(string setSocketIPAddress, int setSocketPort, string setClientName) : base(setSocketIPAddress, setSocketPort) { this.ClientName = setClientName; }
+        public Client(System.Net.IPAddress setSocketIPAddress, int setSocketPort, string setClientName) : base(setSocketIPAddress, setSocketPort) { this.ClientName = setClientName; }
         public override string toString() { return ""; }
 
         public bool Connect() {
@@ -25,10 +25,9 @@
             try {
                 ClientSocket.Connect(new System.Net.IPEndPoint(this.SocketAddress, this.SocketPort));
                 System.Console.WriteLine("Handshaking [{0}] was {1}...", ClientSocket.LocalEndPoint.ToString(), ClientSocket.Connected ? "Succeeded" : "Failed");
-            } catch (System.Exception) { ClientSocket = null; return false; } finally { }
+            } catch (System.Net.Sockets.SocketException) { ClientSocket = null; return false; } finally { }
 
-            System.Threading.Thread watch = new System.Threading.Thread(new System.Threading.ThreadStart(Client.watch));
-            watch.Start();
+            System.Threading.Thread watch = new System.Threading.Thread(new System.Threading.ThreadStart(Client.watch)); watch.Start();
 
             return true;
         }
@@ -48,9 +47,6 @@
                     } catch (System.Exception) { } finally { }
                 }));
                 recMess.Start();
-                //if (recMess.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
-                //    recMess.Interrupt();
-                //} else { recMess.Abort(); }
             } catch (System.ObjectDisposedException) { } finally { }
         }
 
@@ -71,8 +67,7 @@
 
         private static void watch() {
             do { System.Threading.Thread.Sleep(300); } while (isConnect());
-            System.Console.WriteLine("Socket END...");
-            System.Environment.Exit(0x00);
+            System.Console.WriteLine("Socket END..."); System.Environment.Exit(0x00);
         }
 
         internal protected void SetClientName() {
@@ -89,7 +84,7 @@
         private static System.Collections.ArrayList ChatLog = new System.Collections.ArrayList();
         private static System.Net.Sockets.Socket ServerSocket = null;
 
-        public Server(string setSocketIPAddress, int setSocketPort, string commandAnalysis) : base(setSocketIPAddress, setSocketPort) { if (commandAnalysis == "TRUE") { this.commandAnalysis = true; } }
+        public Server(System.Net.IPAddress setSocketIPAddress, int setSocketPort, string commandAnalysis) : base(setSocketIPAddress, setSocketPort) { if (commandAnalysis == "TRUE") { this.commandAnalysis = true; } }
         public override string toString() { return ""; }
 
         public void Listen() {
@@ -199,15 +194,17 @@
         }
 
         public static void Main(string[] args) {
-            string launcherMode = string.Empty; string setIPAddress = string.Empty;
+            string launcherMode = string.Empty; System.Net.IPAddress setIPAddress = System.Net.IPAddress.None;
             string ClientName = string.Empty; string CommandMode = string.Empty;
-            int setListenPort = 50740; bool flag = true;
+            int setListenPort = 50740;
 
             try {
-                if (args.Length != 2 && args.Length != 3) { throw new System.NotSupportedException("Error Args Length..."); } else if (args.Length == 3) {
-                    launcherMode = args[0]; setIPAddress = args[1]; CommandMode = ClientName = args[2];
-                } else { launcherMode = args[0]; setIPAddress = args[1]; ClientName = "[Client Name]"; CommandMode = "FALSE"; }
-            } catch (System.Exception) { getProgramHelp(); } finally { }
+                if (args.Length != 2 && args.Length != 3) { throw new System.NotSupportedException("Error Args Length..."); }
+                else if (args.Length == 3) { CommandMode = ClientName = args[2]; } else { ClientName = "[Client Name]"; CommandMode = "FALSE"; }
+            } catch (System.NotSupportedException) { getProgramHelp(); } finally { }
+            
+
+            if (System.Net.IPAddress.TryParse(args[1], out setIPAddress)) { launcherMode = args[0]; System.Net.IPAddress.Parse(args[1]); } else { getProgramHelp(); }
 
             switch (launcherMode) {
                 case "Client":
