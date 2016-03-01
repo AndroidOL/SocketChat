@@ -35,18 +35,15 @@
         internal protected void ReceiveMessage() {
             System.Net.Sockets.Socket myClientSocket = ClientSocket;
             try {
-                System.Threading.Thread recMess = new System.Threading.Thread(new System.Threading.ThreadStart(() => {
-                    int receiveMessageLength = 0x00;
-                    try {
-                        do {
-                            if (isConnect()) { receiveMessageLength = myClientSocket.Receive(result); } else { return; }
+                int receiveMessageLength = 0x00;
+                try {
+                    do {
+                        if (isConnect()) { receiveMessageLength = myClientSocket.Receive(result); } else { return; }
 
-                            if (receiveMessageLength >= 0x00) { System.Console.WriteLine("Received Message -#{0}", System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength)); }
-                            System.Threading.Thread.Sleep(100);
-                        } while (true);
-                    } catch (System.Exception) { } finally { }
-                }));
-                recMess.Start();
+                        if (receiveMessageLength >= 0x00) { System.Console.WriteLine("Received Message -#{0}", System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength)); }
+                        System.Threading.Thread.Sleep(100);
+                    } while (true);
+                } catch (System.Net.Sockets.SocketException) { } finally { }
             } catch (System.ObjectDisposedException) { } finally { }
         }
 
@@ -56,7 +53,7 @@
                 while ((msg = System.Console.ReadLine()) != "EOF") {
                     if (!isConnect()) { break; }
 
-                    if (msg.Length >= 0x00) {
+                    if (msg.Length > 0x00) {
                         byte[] sMessage = System.Text.Encoding.UTF8.GetBytes(msg); ClientSocket.Send(sMessage, sMessage.Length, 0);
                         if (msg[0] == '#') { System.Console.WriteLine("Send Message to [{0}]: {1}", ClientSocket.RemoteEndPoint.ToString(), msg.Substring(1)); }
                     } System.Threading.Thread.Sleep(100);
@@ -103,68 +100,61 @@
                     string aliveClientName = string.Empty;
                     System.Net.Sockets.Socket myClientSocket = ClientSocket;
                     try {
-                        System.Threading.Thread PrintMessage = new System.Threading.Thread(new System.Threading.ThreadStart(() => {
+                        System.Threading.Thread SendTimer = new System.Threading.Thread(() => {
                             try {
-                                System.Threading.Thread SendTimer = new System.Threading.Thread(() => {
-                                    try {
-                                        int currentPoint = 0x00;
-                                        do {
-                                            if (currentPoint < ChatLog.Count) {
-                                                myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(string.Format("{0}", ChatLog[currentPoint++])));
-                                                System.Threading.Thread.Sleep(500);
-                                            }
-                                        } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
-                                    } catch (System.ObjectDisposedException) {
-                                    } catch (System.Threading.ThreadInterruptedException) { } finally { }
-                                });
-                                SendTimer.Start();
-
-                                int receiveMessageLength = myClientSocket.Receive(result);
-                                string ClientName = System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength);
-                                if (ClientName.IndexOf("SET NAME: ") >= 0x00) {
-                                    aliveClientName = ClientName = ClientName.Substring("SET NAME: ".Length);
-                                } else { ClientName = string.Empty; }
-                                System.Threading.Thread.CurrentThread.Name = ClientName;
-                                System.Console.WriteLine("Socket STARTED by {0}...", ClientName);
-
-                                string msg = string.Empty; int selectIndex = 0x00;
+                                int currentPoint = 0x00;
                                 do {
-                                    if (System.Threading.Thread.CurrentThread.IsAlive) {
-                                        if ((receiveMessageLength = myClientSocket.Receive(result)) > 0x00) {
-                                            msg = System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength);
-
-                                            if (this.commandAnalysis) { selectIndex = canAnalysis(msg); } else { selectIndex = 0x00; }
-                                            switch (selectIndex) {
-                                                case 0x01:
-                                                    int startIndex = msg.IndexOf(": ") + ": ".Length; ClientName = msg.Substring(startIndex, msg.Length - startIndex);
-                                                    lock (ChatLog) { ChatLog.Add("[" + aliveClientName + "] was Change Name to [" + ClientName + "]"); }
-                                                    aliveClientName = ClientName; break;
-                                                case 0x02: myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(ClientName)); break;
-                                                case 0x04: this.commandAnalysis = !this.commandAnalysis; break;
-                                                case 0x08: myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close(); System.Environment.Exit(0); break;
-                                                case 0x0F: SocketProgram.getProgramHelp(); break;
-                                                default:
-                                                    System.Console.WriteLine("Received Message by [{0} @ -#{1}]: {2}", myClientSocket.RemoteEndPoint.ToString(), ClientName, msg);
-                                                    lock (ChatLog) { ChatLog.Add(ClientName + ": " + msg); } break;
-                                            } System.Threading.Thread.Sleep(200);
-                                        }
+                                    if (currentPoint < ChatLog.Count) {
+                                        myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(string.Format("{0}", ChatLog[currentPoint++])));
+                                        System.Threading.Thread.Sleep(500);
                                     }
                                 } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
-                                if (SendTimer.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
-                                    SendTimer.Interrupt();
-                                } else { SendTimer.Abort(); }
-                            } catch (System.Net.Sockets.SocketException) {
-                            } catch (System.Threading.ThreadInterruptedException) { } finally { };
-                        }));
-                        PrintMessage.Start();
+                            } catch (System.ObjectDisposedException) {
+                            } catch (System.Threading.ThreadInterruptedException) { } finally { }
+                        });
+                        SendTimer.Start();
+
+                        int receiveMessageLength = myClientSocket.Receive(result);
+                        string ClientName = System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength);
+                        if (ClientName.IndexOf("SET NAME: ") >= 0x00) {
+                            aliveClientName = ClientName = ClientName.Substring("SET NAME: ".Length);
+                        } else { ClientName = string.Empty; }
+                        System.Threading.Thread.CurrentThread.Name = ClientName;
+                        System.Console.WriteLine("Socket STARTED by {0}...", ClientName);
+
+                        string msg = string.Empty; int selectIndex = 0x00;
                         do {
-                            System.Threading.Thread.Sleep(500);
+                            if (System.Threading.Thread.CurrentThread.IsAlive) {
+                                if ((receiveMessageLength = myClientSocket.Receive(result)) > 0x00) {
+                                    msg = System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength);
+
+                                    if (this.commandAnalysis) { selectIndex = canAnalysis(msg); } else { selectIndex = 0x00; }
+                                    switch (selectIndex) {
+                                        case 0x01:
+                                            int startIndex = msg.IndexOf(": ") + ": ".Length; ClientName = msg.Substring(startIndex, msg.Length - startIndex);
+                                            lock (ChatLog) { ChatLog.Add("[" + aliveClientName + "] was Change Name to [" + ClientName + "]"); }
+                                            aliveClientName = ClientName; break;
+                                        case 0x02: myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(ClientName)); break;
+                                        case 0x04: this.commandAnalysis = !this.commandAnalysis; break;
+                                        case 0x08: myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close(); System.Environment.Exit(0); break;
+                                        case 0x0F: SocketProgram.getProgramHelp(); break;
+                                        default:
+                                            System.Console.WriteLine("Received Message by [{0} @ -#{1}]: {2}", myClientSocket.RemoteEndPoint.ToString(), ClientName, msg);
+                                            lock (ChatLog) { ChatLog.Add(ClientName + ": " + msg); } break;
+                                    } System.Threading.Thread.Sleep(200);
+                                }
+                            }
                         } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
-                        System.Console.WriteLine("Socket END by [{0}/{1}]...", PrintMessage.Name, aliveClientName);
-                        if (PrintMessage.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
-                            PrintMessage.Interrupt();
-                        } else { PrintMessage.Abort(); }
-                    } finally { myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close(); }
+                        if (SendTimer.ThreadState == System.Threading.ThreadState.WaitSleepJoin) {
+                            SendTimer.Interrupt();
+                        } else { SendTimer.Abort(); }
+                    } catch (System.Net.Sockets.SocketException) {
+                    } catch (System.Threading.ThreadInterruptedException) { } finally { };
+                    do {
+                        System.Threading.Thread.Sleep(500);
+                    } while (!myClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead));
+                    System.Console.WriteLine("Socket END by [{0}/{1}]...", System.Threading.Thread.CurrentThread.Name, aliveClientName);
+                    myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close();
                     // System.Exception e: System.Console.WriteLine("[Class 1]# {0}: {1}\n\t{2}", e.GetType(), e.Message, e.StackTrace);
                 }));
                 receiveThread.Start();
@@ -195,8 +185,7 @@
 
         public static void Main(string[] args) {
             string launcherMode = string.Empty; System.Net.IPAddress setIPAddress = System.Net.IPAddress.None;
-            string ClientName = string.Empty; string CommandMode = string.Empty;
-            int setListenPort = 50740;
+            string ClientName = string.Empty; string CommandMode = string.Empty; int setListenPort = 50740;
 
             try {
                 if (args.Length != 2 && args.Length != 3) { throw new System.NotSupportedException("Error Args Length..."); }
@@ -216,21 +205,16 @@
                         } while (!isConnected);
                     } catch (System.NotSupportedException) { System.Console.WriteLine("Bad Server Address"); break; } finally { }
 
-                    try {
-                        myClient.SetClientName();
-                        System.Threading.Thread messageRec = new System.Threading.Thread(() => { myClient.ReceiveMessage(); });
-                        messageRec.Start(); myClient.SendMessage();
-                    } catch (System.Exception) { } finally { }
-
+                    System.Threading.Thread messageRec = new System.Threading.Thread(() => { myClient.ReceiveMessage(); }); messageRec.Start();
+                    myClient.SetClientName(); myClient.SendMessage();
                     break;
 
                 case "Server":
-                    Server myServer = new Server(setIPAddress, setListenPort, CommandMode);
-                    myServer.Listen();
-
+                    Server myServer = new Server(setIPAddress, setListenPort, CommandMode); myServer.Listen();
                     break;
 
-                default: break;
+                default:
+                    break;
             }
             System.Console.ReadKey();
         }
