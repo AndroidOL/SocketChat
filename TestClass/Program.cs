@@ -201,10 +201,8 @@
             try {
                 if (args.Length != 2 && args.Length != 3) { throw new System.NotSupportedException("Error Args Length..."); }
                 else if (args.Length == 3) { CommandMode = ClientName = args[2]; } else { ClientName = "[Client Name]"; CommandMode = "FALSE"; }
+                if (System.Net.IPAddress.TryParse(args[1], out setIPAddress)) { launcherMode = args[0]; System.Net.IPAddress.Parse(args[1]); } else { getProgramHelp(); }
             } catch (System.NotSupportedException) { getProgramHelp(); } finally { }
-            
-
-            if (System.Net.IPAddress.TryParse(args[1], out setIPAddress)) { launcherMode = args[0]; System.Net.IPAddress.Parse(args[1]); } else { getProgramHelp(); }
 
             switch (launcherMode) {
                 case "Client":
