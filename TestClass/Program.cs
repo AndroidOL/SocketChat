@@ -1,6 +1,6 @@
 ﻿namespace Socket {
     public abstract class SocketBase {
-        public static byte[] result = new byte[1024];
+        public static byte[] result = new byte[4096];
         public System.Net.IPAddress SocketAddress { set; get; }
         public int SocketPort { set; get; }
 
@@ -19,7 +19,7 @@
         public Client(System.Net.IPAddress setSocketIPAddress, int setSocketPort, string setClientName) : base(setSocketIPAddress, setSocketPort) { this.ClientName = setClientName; }
         public override string toString() { return ""; }
 
-        public void Connect(int reTryTimes = 0x03) {
+        public void Connect(int reTryTimes = 0x00) {
             bool isConnected = false; int ConnectTimes = 0x00; reTryTimes = reTryTimes < 0x03 ? 0x03 : reTryTimes;
             ClientSocket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
 
@@ -57,8 +57,11 @@
         }
 
         internal protected bool SendMessage() {
+            string msg = string.Empty;
             try {
-                string msg = string.Empty;
+                System.IO.Stream inputStream = System.Console.OpenStandardInput();
+                System.Console.SetIn(new System.IO.StreamReader(inputStream, System.Text.Encoding.Default, true, 4096));
+
                 while ((msg = System.Console.ReadLine()) != "EOF") {
                     if (!isConnect()) { break; }
 
@@ -146,7 +149,7 @@
                                         case 0x02: myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(ClientName)); break;
                                         case 0x04: this.commandAnalysis = !this.commandAnalysis; break;
                                         case 0x08: myClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); myClientSocket.Close(); System.Environment.Exit(0); break;
-                                        case 0x0F: SocketProgram.getProgramHelp(); break;
+                                        case 0x0F: myClientSocket.Send(System.Text.Encoding.UTF8.GetBytes(System.DateTime.UtcNow.ToLocalTime().ToString(new System.Globalization.CultureInfo("en-US")))); break;
                                         default:
                                             System.Console.WriteLine("Received Message by [{0} @ -#{1}]: {2}", myClientSocket.RemoteEndPoint.ToString(), ClientName, msg);
                                             lock (ChatLog) { ChatLog.Add(ClientName + ": " + msg); } break;
@@ -178,7 +181,7 @@
                 case "GETN": return 0x02;
                 case "DISA": return 0x04;
                 case "SHUT": return 0x08;
-                case "HELP": return 0x0F;
+                case "TIME": return 0x0F;
                 default: return 0x00;
             }
         }
