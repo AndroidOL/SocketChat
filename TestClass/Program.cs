@@ -19,15 +19,24 @@
         public Client(System.Net.IPAddress setSocketIPAddress, int setSocketPort, string setClientName) : base(setSocketIPAddress, setSocketPort) { this.ClientName = setClientName; }
         public override string toString() { return ""; }
 
-        public bool Connect() {
+        public void Connect(int reTryTimes = 0x03) {
+            bool isConnected = false; int ConnectTimes = 0x00; reTryTimes = reTryTimes < 0x03 ? 0x03 : reTryTimes;
             ClientSocket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
 
+            do {
+                if (isConnected = ConnectToServer()) { break; } else if (ConnectTimes >= 0x03) { ClientSocket = null; throw new System.NotSupportedException(); } else {
+                    System.Console.WriteLine("Handshaking [{0}] - No Response...", this.SocketAddress.ToString());
+                } if (++ConnectTimes < reTryTimes) { System.Threading.Thread.Sleep(1000); }
+            } while (!isConnected);
+
+            System.Threading.Thread watch = new System.Threading.Thread(new System.Threading.ThreadStart(Client.watch)); watch.Start();
+        }
+
+        private bool ConnectToServer() {
             try {
                 ClientSocket.Connect(new System.Net.IPEndPoint(this.SocketAddress, this.SocketPort));
                 System.Console.WriteLine("Handshaking [{0}] was {1}...", ClientSocket.LocalEndPoint.ToString(), ClientSocket.Connected ? "Succeeded" : "Failed");
-            } catch (System.Net.Sockets.SocketException) { ClientSocket = null; return false; } finally { }
-
-            System.Threading.Thread watch = new System.Threading.Thread(new System.Threading.ThreadStart(Client.watch)); watch.Start();
+            } catch (System.Net.Sockets.SocketException) { return false; } finally { }
 
             return true;
         }
@@ -196,14 +205,7 @@
             switch (launcherMode) {
                 case "Client":
                     Client myClient = new Client(setIPAddress, setListenPort, ClientName);
-                    try {
-                        bool isConnected = false; int ConnectTimes = 0x00;
-                        do {
-                            if (isConnected = myClient.Connect()) { break; } else if (ConnectTimes >= 0x03) { throw new System.NotSupportedException(); } else {
-                                System.Console.WriteLine("Handshaking [{0}] - No Response...", myClient.SocketAddress.ToString());
-                            } if (++ConnectTimes <= 0x02) { System.Threading.Thread.Sleep(1000); }
-                        } while (!isConnected);
-                    } catch (System.NotSupportedException) { System.Console.WriteLine("Bad Server Address"); break; } finally { }
+                    try { myClient.Connect(); } catch (System.NotSupportedException) { System.Console.WriteLine("Bad Server Address"); break; } finally { }
 
                     System.Threading.Thread messageRec = new System.Threading.Thread(() => { myClient.ReceiveMessage(); }); messageRec.Start();
                     myClient.SetClientName(); myClient.SendMessage();
