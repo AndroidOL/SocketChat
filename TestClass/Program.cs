@@ -14,6 +14,7 @@
 
     public class Client : SocketBase {
         public string ClientName { set; get; }
+        private static bool isAlive { set; get; }
         private static System.Net.Sockets.Socket ClientSocket = null;
 
         public Client(System.Net.IPAddress setSocketIPAddress, int setSocketPort, string setClientName) : base(setSocketIPAddress, setSocketPort) { this.ClientName = setClientName; }
@@ -27,8 +28,8 @@
                 if (isConnected = ConnectToServer()) { break; } else if (ConnectTimes >= 0x03) { ClientSocket = null; throw new System.NotSupportedException(); } else {
                     System.Console.WriteLine("Handshaking [{0}] - No Response...", this.SocketAddress.ToString());
                 } if (++ConnectTimes < reTryTimes) { System.Threading.Thread.Sleep(1000); }
-            } while (!isConnected);
-
+            } while (!isConnected); isAlive = true;
+            
             System.Threading.Thread watch = new System.Threading.Thread(new System.Threading.ThreadStart(Client.watch)); watch.Start();
         }
 
@@ -42,18 +43,14 @@
         }
 
         internal protected void ReceiveMessage() {
-            System.Net.Sockets.Socket myClientSocket = ClientSocket;
             try {
                 int receiveMessageLength = 0x00;
-                try {
-                    do {
-                        if (isConnect()) { receiveMessageLength = myClientSocket.Receive(result); } else { return; }
-
-                        if (receiveMessageLength >= 0x00) { System.Console.WriteLine("Received Message -#{0}", System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength)); }
-                        System.Threading.Thread.Sleep(100);
-                    } while (true);
-                } catch (System.Net.Sockets.SocketException) { } finally { }
-            } catch (System.ObjectDisposedException) { } finally { }
+                do {
+                    receiveMessageLength = ClientSocket.Receive(result);
+                    if (receiveMessageLength >= 0x00) { System.Console.WriteLine("Received Message -#{0}", System.Text.Encoding.UTF8.GetString(result, 0, receiveMessageLength)); }
+                    System.Threading.Thread.Sleep(200); receiveMessageLength = 0x00;
+                } while (isConnect());
+            } catch (System.Net.Sockets.SocketException) { } catch (System.ObjectDisposedException) { } finally { }
         }
 
         internal protected bool SendMessage() {
@@ -70,12 +67,13 @@
                         if (msg[0] == '#') { System.Console.WriteLine("Send Message to [{0}]: {1}", ClientSocket.RemoteEndPoint.ToString(), msg.Substring(1)); }
                     } System.Threading.Thread.Sleep(100);
                 } if (isConnect()) { ClientSocket.Send(System.Text.Encoding.UTF8.GetBytes("END OF THE SESSION")); }
-            } finally { ClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); ClientSocket.Close(); }
+            } finally { isAlive = false; ClientSocket.Shutdown(System.Net.Sockets.SocketShutdown.Both); ClientSocket.Close(); }
             return false;
         }
 
         private static void watch() {
-            do { System.Threading.Thread.Sleep(300); } while (isConnect());
+
+            do { System.Threading.Thread.Sleep(300); } while (isAlive ? isConnect() : isAlive);
             System.Console.WriteLine("Socket END..."); System.Environment.Exit(0x00);
         }
 
@@ -84,7 +82,7 @@
             ClientSocket.Send(System.Text.Encoding.UTF8.GetBytes("SET NAME: " + this.ClientName));
         }
 
-        internal protected static bool isConnect() { return ClientSocket.Connected; }
+        internal protected static bool isConnect() { return !ClientSocket.Poll(10, System.Net.Sockets.SelectMode.SelectRead); }
     }
 
     public class Server : SocketBase {
@@ -211,7 +209,7 @@
                     try { myClient.Connect(); } catch (System.NotSupportedException) { System.Console.WriteLine("Bad Server Address"); break; } finally { }
 
                     System.Threading.Thread messageRec = new System.Threading.Thread(() => { myClient.ReceiveMessage(); }); messageRec.Start();
-                    myClient.SetClientName(); myClient.SendMessage();
+                    myClient.SetClientName(); myClient.SendMessage(); messageRec.Abort();
                     break;
 
                 case "Server":
